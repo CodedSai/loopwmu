@@ -1,3 +1,7 @@
+--[[
+   Settings Menu — Fully Fixed & Integrated
+]]
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PacketRemote = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Packet"):WaitForChild("RemoteEvent")
 local Players = game:GetService("Players")
