@@ -1,1 +1,700 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PacketRemote = ReplicatedStorage:WaitForChild("SharedModules"):WaitForChild("Packet"):WaitForChild("RemoteEvent")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
 
+-- ============================================================
+-- SETTINGS MANAGER
+-- ============================================================
+local SettingsFile = "cute_si_sai_settings.json"
+local SavedSettings = {}
+
+if isfile(SettingsFile) then
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(readfile(SettingsFile))
+    end)
+    if ok and data then
+        SavedSettings = data
+    end
+end
+
+-- AUTO_EXECUTE_ROLLBACK
+local isVulnEnabled = (SavedSettings.Toggles and SavedSettings.Toggles["Auto Vuln"] == true)
+if isVulnEnabled then
+    print("Rollback packet fired!")
+    pcall(function() PacketRemote:FireServer(buffer.fromstring("6\x00\x01\xff")) end)
+else
+    pcall(function() PacketRemote:FireServer(buffer.fromstring("6\x00\x00")) end)
+end
+
+-- ============================================================
+-- Helpers
+-- ============================================================
+
+local function corner(radius, parent)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, radius)
+    c.Parent = parent
+    return c
+end
+
+local function stroke(parent, color, transparency, thickness)
+    local s = Instance.new("UIStroke")
+    s.Color = color
+    s.Transparency = transparency or 0
+    s.Thickness = thickness or 1
+    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    s.Parent = parent
+    return s
+end
+
+local function newFrame(props, parent)
+    local f = Instance.new("Frame")
+    f.BackgroundTransparency = 1
+    f.BorderSizePixel = 0
+    for k, v in pairs(props) do f[k] = v end
+    f.Parent = parent
+    return f
+end
+
+local function newLabel(props, parent)
+    local l = Instance.new("TextLabel")
+    l.BackgroundTransparency = 1
+    l.BorderSizePixel = 0
+    l.Font = Enum.Font.GothamSemibold
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.TextYAlignment = Enum.TextYAlignment.Center
+    for k, v in pairs(props) do l[k] = v end
+    l.Parent = parent
+    return l
+end
+
+local function newButton(props, parent)
+    local b = Instance.new("TextButton")
+    b.AutoButtonColor = false
+    b.BorderSizePixel = 0
+    b.Font = Enum.Font.GothamBold
+    for k, v in pairs(props) do b[k] = v end
+    b.Parent = parent
+    return b
+end
+
+local function hoverColor(button, base, hover)
+    button.MouseEnter:Connect(function() button.BackgroundColor3 = hover end)
+    button.MouseLeave:Connect(function() button.BackgroundColor3 = base end)
+end
+
+-- ============================================================
+-- Root
+-- ============================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SettingsMenuUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Card = newFrame({
+    Name = "SettingsCard",
+    Size = UDim2.fromOffset(340, 400),
+    Position = UDim2.new(0.5, 0, 0.5, 0),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundColor3 = Color3.fromRGB(17, 15, 22),
+    BackgroundTransparency = 0,
+}, ScreenGui)
+corner(16, Card)
+stroke(Card, Color3.fromRGB(142, 68, 173), 0.85, 1)
+
+-- DRAGGABLE
+local dragging, dragInput, dragStart, startPos
+
+Card.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Card.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+Card.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        local delta = input.Position - dragStart
+        Card.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- CONTENT AREA
+local Content = newFrame({
+    Name = "Content",
+    Size = UDim2.new(1, 0, 1, 0),
+}, Card)
+local ContentPadding = Instance.new("UIPadding")
+ContentPadding.PaddingTop = UDim.new(0, 24)
+ContentPadding.PaddingBottom = UDim.new(0, 24)
+ContentPadding.PaddingLeft = UDim.new(0, 24)
+ContentPadding.PaddingRight = UDim.new(0, 24)
+ContentPadding.Parent = Content
+
+-- ============================================================
+-- .header
+-- ============================================================
+
+local Header = newFrame({
+    Name = "Header",
+    Position = UDim2.fromOffset(0, 0),
+    Size = UDim2.fromOffset(302, 22),
+}, Content)
+
+newLabel({
+    Name = "Title",
+    Position = UDim2.fromOffset(0, 0),
+    Size = UDim2.fromOffset(120, 22),
+    Text = "Luv U @ev1._",
+    TextColor3 = Color3.fromRGB(255, 255, 255),
+    TextSize = 15,
+    Font = Enum.Font.GothamSemibold,
+}, Header)
+
+local PosBtn = newButton({
+    Name = "PositionButton",
+    Position = UDim2.fromOffset(120, 0),
+    Size = UDim2.fromOffset(62, 22),
+    Text = "Position",
+    TextSize = 11,
+    BackgroundColor3 = Color3.fromRGB(22, 19, 28),
+    TextColor3 = Color3.fromRGB(179, 169, 194),
+}, Header)
+corner(6, PosBtn)
+stroke(PosBtn, Color3.fromRGB(142, 68, 173), 0.8, 1)
+hoverColor(PosBtn, Color3.fromRGB(22, 19, 28), Color3.fromRGB(33, 29, 42))
+
+local StartBtn = newButton({
+    Name = "StartButton",
+    Position = UDim2.fromOffset(190, 0),
+    Size = UDim2.fromOffset(50, 22),
+    Text = "Start",
+    TextSize = 11,
+    BackgroundColor3 = Color3.fromRGB(24, 20, 34),
+    TextColor3 = Color3.fromRGB(179, 136, 255),
+}, Header)
+corner(6, StartBtn)
+local startBtnStroke = stroke(StartBtn, Color3.fromRGB(179, 136, 255), 0.8, 1)
+
+local SAVE_ICON_ID = "rbxassetid://112994142770037"
+local CLOSE_ICON_ID = "rbxassetid://6023426922"
+
+local SaveBtn = Instance.new("ImageButton")
+SaveBtn.Name = "SaveButton"
+SaveBtn.Position = UDim2.fromOffset(250, 1)
+SaveBtn.Size = UDim2.fromOffset(20, 20)
+SaveBtn.BackgroundTransparency = 1
+SaveBtn.BorderSizePixel = 0
+SaveBtn.Image = SAVE_ICON_ID
+SaveBtn.ImageColor3 = Color3.fromRGB(108, 99, 122)
+SaveBtn.ScaleType = Enum.ScaleType.Fit
+SaveBtn.Parent = Header
+SaveBtn.MouseEnter:Connect(function() SaveBtn.ImageColor3 = Color3.fromRGB(179, 136, 255) end)
+SaveBtn.MouseLeave:Connect(function() SaveBtn.ImageColor3 = Color3.fromRGB(108, 99, 122) end)
+
+local CloseBtn = Instance.new("ImageButton")
+CloseBtn.Name = "CloseButton"
+CloseBtn.Position = UDim2.fromOffset(282, 1)
+CloseBtn.Size = UDim2.fromOffset(20, 20)
+CloseBtn.BackgroundTransparency = 1
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Image = CLOSE_ICON_ID
+CloseBtn.ImageColor3 = Color3.fromRGB(108, 99, 122)
+CloseBtn.ScaleType = Enum.ScaleType.Fit
+CloseBtn.Parent = Header
+CloseBtn.MouseEnter:Connect(function() CloseBtn.ImageColor3 = Color3.fromRGB(179, 136, 255) end)
+CloseBtn.MouseLeave:Connect(function() CloseBtn.ImageColor3 = Color3.fromRGB(108, 99, 122) end)
+
+-- ============================================================
+-- Input group builder
+-- ============================================================
+
+local function buildInputGroup(labelText, statusText, yOffset)
+    local Label = newLabel({
+        Name = "Label",
+        Position = UDim2.fromOffset(0, yOffset),
+        Size = UDim2.fromOffset(302, 14),
+        Text = labelText:upper(),
+        TextColor3 = Color3.fromRGB(92, 84, 105),
+        TextSize = 10,
+        Font = Enum.Font.GothamBold,
+    }, Content)
+
+    local InputBox = Instance.new("TextBox")
+    InputBox.Name = "Input"
+    InputBox.Position = UDim2.fromOffset(0, yOffset + 22)
+    InputBox.Size = UDim2.fromOffset(302, 38)
+    InputBox.BackgroundColor3 = Color3.fromRGB(9, 8, 12)
+    InputBox.BorderSizePixel = 0
+    InputBox.Text = ""
+    InputBox.PlaceholderText = "Paste CFrame Position"
+    InputBox.PlaceholderColor3 = Color3.fromRGB(68, 60, 82)
+    InputBox.TextColor3 = Color3.fromRGB(209, 196, 233)
+    InputBox.TextSize = 13
+    InputBox.Font = Enum.Font.Gotham
+    InputBox.TextXAlignment = Enum.TextXAlignment.Left
+    InputBox.ClearTextOnFocus = false
+    InputBox.TextTruncate = Enum.TextTruncate.AtEnd
+    
+    if SavedSettings and type(SavedSettings) == "table" and SavedSettings[labelText] then
+        InputBox.Text = SavedSettings[labelText]
+    end
+    
+    InputBox.Parent = Content
+    corner(10, InputBox)
+    local inputStroke = stroke(InputBox, Color3.fromRGB(142, 68, 173), 0.9, 1)
+    InputBox.Focused:Connect(function() inputStroke.Color = Color3.fromRGB(179, 136, 255); inputStroke.Transparency = 0.6 end)
+    InputBox.FocusLost:Connect(function() inputStroke.Color = Color3.fromRGB(142, 68, 173); inputStroke.Transparency = 0.9 end)
+
+    local inputPad = Instance.new("UIPadding")
+    inputPad.PaddingLeft = UDim.new(0, 14)
+    inputPad.PaddingRight = UDim.new(0, 14)
+    inputPad.Parent = InputBox
+
+    local StatusRow = newFrame({
+        Name = "StatusRow",
+        Position = UDim2.fromOffset(0, yOffset + 65),
+        Size = UDim2.fromOffset(302, 20),
+    }, Content)
+
+    local StatusLeft = newFrame({
+        Name = "StatusLeft",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.fromOffset(200, 20),
+    }, StatusRow)
+
+    newLabel({
+        Name = "StatusMessage",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.fromOffset(150, 20),
+        Text = statusText,
+        TextColor3 = Color3.fromRGB(126, 87, 194),
+        TextSize = 11,
+        Font = Enum.Font.Gotham,
+    }, StatusLeft)
+
+    local DeleteBtn = newButton({
+        Name = "DeleteButton",
+        Position = UDim2.fromOffset(102, 0),
+        Size = UDim2.fromOffset(20, 20),
+        Text = "×",
+        TextSize = 16,
+        BackgroundTransparency = 1,
+        TextColor3 = Color3.fromRGB(239, 83, 80),
+        TextTransparency = 0.6,
+    }, StatusLeft)
+    DeleteBtn.MouseEnter:Connect(function() DeleteBtn.TextTransparency = 0 end)
+    DeleteBtn.MouseLeave:Connect(function() DeleteBtn.TextTransparency = 0.6 end)
+    DeleteBtn.MouseButton1Click:Connect(function()
+        StatusRow.Visible = false
+    end)
+
+    local SaveIndicator = newFrame({
+        Name = "SaveIndicator",
+        Position = UDim2.new(1, -60, 0, 0),
+        Size = UDim2.fromOffset(60, 20),
+    }, StatusRow)
+
+    local Dot = newFrame({
+        Name = "Dot",
+        Position = UDim2.fromOffset(0, 8),
+        Size = UDim2.fromOffset(5, 5),
+        BackgroundColor3 = Color3.fromRGB(179, 136, 255),
+        BackgroundTransparency = 0,
+    }, SaveIndicator)
+    corner(3, Dot)
+
+    newLabel({
+        Name = "SavedText",
+        Position = UDim2.fromOffset(11, 0),
+        Size = UDim2.fromOffset(45, 20),
+        Text = "saved",
+        TextColor3 = Color3.fromRGB(179, 136, 255),
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+    }, SaveIndicator)
+
+    return InputBox, StatusRow
+end
+
+local TeleportInput, TeleportStatus = buildInputGroup("Teleport Position", "loaded saved cframe", 46)
+local SprinklerInput = buildInputGroup("Sprinkler Position", "loaded saved cframe", 140)
+
+-- ============================================================
+-- .controls-grid
+-- ============================================================
+
+local GridDivider = newFrame({
+    Name = "GridDivider",
+    Position = UDim2.fromOffset(0, 240),
+    Size = UDim2.fromOffset(302, 1),
+    BackgroundTransparency = 0.9,
+    BackgroundColor3 = Color3.fromRGB(142, 68, 173),
+}, Content)
+
+local toggles = {}
+
+-- CFUNC
+local function parseCFrame(input)
+    local numbers = {}
+    for num in input:gmatch("-?%d+%.?%d*") do
+        table.insert(numbers, tonumber(num))
+    end
+    if #numbers == 12 then
+        return CFrame.new(
+            numbers[1], numbers[2], numbers[3],
+            numbers[4], numbers[5], numbers[6],
+            numbers[7], numbers[8], numbers[9],
+            numbers[10], numbers[11], numbers[12]
+        )
+    elseif #numbers == 3 then
+        return CFrame.new(numbers[1], numbers[2], numbers[3])
+    end
+    return nil
+end
+
+local function teleportToCFrame(input)
+    local cf = parseCFrame(input)
+    if not cf then return false end
+    local character = player.Character
+    if not character then return false end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    hrp.CFrame = cf
+    return true
+end
+
+local function parseToVector(text)
+    local numbers = {}
+    for num in string.gmatch(text, "[-+.%d]+") do
+        table.insert(numbers, tonumber(num))
+    end
+    if #numbers >= 3 then
+        return Vector3.new(numbers[1], numbers[2], numbers[3])
+    end
+    return nil
+end
+
+local function placeSprinkler(targetPositionString)
+    local character = player.Character
+    local human = character and character:FindFirstChildOfClass("Humanoid")
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    local item = backpack and backpack:FindFirstChild("Super Sprinkler")
+    
+    local targetVector = parseToVector(targetPositionString)
+    if not targetVector then return false end
+    
+    if item and human then
+        human:EquipTool(item)
+        local toolInCharacter = character:WaitForChild("Super Sprinkler", 3)
+        if toolInCharacter then
+            task.wait(0.1)
+            local args = {
+                20,
+                targetVector,
+                "Super Sprinkler",
+                toolInCharacter,
+                1
+            }
+            pcall(function()
+                PacketRemote:FireServer(unpack(args))
+            end)
+            task.wait(0.3)
+            human:UnequipTools()
+            return true
+        end
+    end
+    return false
+end
+
+local function useSuperWateringCan()
+    local character = player.Character
+    local human = character and character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local backpack = player:FindFirstChildOfClass("Backpack")
+    local item = backpack and backpack:FindFirstChild("Super Watering Can")
+    
+    if not rootPart then return false end
+    
+    local targetVector = rootPart.Position
+    
+    if item and human then
+        human:EquipTool(item)
+        local toolInCharacter = character:WaitForChild("Super Watering Can", 3)
+        if toolInCharacter then
+            task.wait(0.1)
+            local args = {
+                67,
+                targetVector,
+                "Super Watering Can",
+                toolInCharacter
+            }
+            pcall(function()
+                PacketRemote:FireServer(unpack(args))
+            end)
+            task.wait(0.3)
+            human:UnequipTools()
+            return true
+        end
+    end
+    return false
+end
+
+local function buildToggle(labelText, col, row)
+    local colX = (col == 0) and 0 or 163
+    local rowY = 288 + row * 40
+
+    local Item = newFrame({
+        Name = labelText .. "Item",
+        Position = UDim2.fromOffset(colX, rowY),
+        Size = UDim2.fromOffset(139, 36),
+    }, Content)
+
+    newLabel({
+        Name = "Label",
+        Position = UDim2.fromOffset(0, 0),
+        Size = UDim2.fromOffset(90, 36),
+        Text = labelText,
+        TextColor3 = Color3.fromRGB(179, 169, 194),
+        TextSize = 13,
+        Font = Enum.Font.Gotham,
+    }, Item)
+
+    local state = false
+    if SavedSettings and type(SavedSettings) == "table" and SavedSettings.Toggles and SavedSettings.Toggles[labelText] ~= nil then
+        state = SavedSettings.Toggles[labelText]
+    end
+
+    local Btn = newButton({
+        Name = "Toggle",
+        Position = UDim2.new(1, -40, 0, 0),
+        Size = UDim2.fromOffset(40, 36),
+        Text = state and "ON" or "OFF",
+        TextSize = 11,
+        Font = Enum.Font.GothamBold,
+        BackgroundTransparency = 1,
+        TextColor3 = state and Color3.fromRGB(0, 230, 118) or Color3.fromRGB(239, 83, 80),
+    }, Item)
+
+    Btn.MouseButton1Click:Connect(function()
+        state = not state
+        
+        if labelText == "Auto Vuln" then
+            if state then
+                pcall(function() PacketRemote:FireServer(buffer.fromstring("6\x00\x01\xff")) end)
+            else
+                pcall(function() PacketRemote:FireServer(buffer.fromstring("6\x00\x00")) end)
+            end
+        elseif labelText == "Fps Booster" then
+            if state then
+                task.spawn(function()
+                    local Lighting = game:GetService("Lighting")
+                    local Workspace = game:GetService("Workspace")
+
+                    Lighting.GlobalShadows = false
+                    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+                    local targetFolder = Workspace:FindFirstChild("Gardens")
+                        and Workspace.Gardens:FindFirstChild("Plot1")
+                        and Workspace.Gardens.Plot1:FindFirstChild("Plants")
+
+                    local function cleanPart(obj)
+                        if obj:IsA("BasePart") then
+                            obj.CastShadow = false
+                            obj.Material = Enum.Material.SmoothPlastic
+                            obj.Reflectance = 0
+                            
+                            if targetFolder and obj:IsDescendantOf(targetFolder) then
+                                local isFruit = false
+                                local ancestor = obj.Parent
+                                
+                                while ancestor and ancestor ~= targetFolder do
+                                    if ancestor.Name == "Fruits" then
+                                        isFruit = true
+                                        break
+                                    end
+                                    ancestor = ancestor.Parent
+                                end
+                                
+                                if not isFruit then
+                                    obj.Transparency = 1
+                                    obj.CanCollide = false
+                                end
+                            end
+                        elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                            obj:Destroy()
+                        end
+                    end
+
+                    for _, v in ipairs(Workspace:GetDescendants()) do
+                        cleanPart(v)
+                    end
+
+                    Workspace.DescendantAdded:Connect(cleanPart)
+                end)
+            end
+        end
+
+        if state then
+            Btn.Text = "ON"
+            Btn.TextColor3 = Color3.fromRGB(0, 230, 118)
+        else
+            Btn.Text = "OFF"
+            Btn.TextColor3 = Color3.fromRGB(239, 83, 80)
+        end
+    end)
+
+    toggles[labelText] = { button = Btn, getState = function() return state end }
+    return Btn
+end
+
+buildToggle("Auto Tp", 0, -1.20)
+buildToggle("Auto Sprinkler", 1, -1.20)
+buildToggle("Auto Vuln", 0, -0.80)
+buildToggle("Auto Water", 1, -0.80)
+buildToggle("Auto Rejoin", 0, -0.40)
+buildToggle("Auto Execute", 1, -0.40)
+buildToggle("Auto Start", 0, 0)
+buildToggle("Fps Booster", 1, 0)
+
+-- ============================================================
+-- Top-bar button behavior
+-- ============================================================
+
+local started = false
+
+local function executeStartLogic()
+    started = not started
+    if started then
+        StartBtn.Text = "Stop"
+        StartBtn.TextColor3 = Color3.fromRGB(239, 83, 80)
+        StartBtn.BackgroundColor3 = Color3.fromRGB(28, 19, 21)
+        startBtnStroke.Color = Color3.fromRGB(239, 83, 80)
+        
+        if toggles["Auto Tp"].getState() then
+            task.spawn(function()
+                while started and toggles["Auto Tp"].getState() do
+                    teleportToCFrame(TeleportInput.Text)
+                    task.wait(0.5)
+                end
+            end)
+        end
+
+        if toggles["Auto Rejoin"].getState() then
+            task.spawn(function()
+                local countdown = 3
+                while started and toggles["Auto Rejoin"].getState() do
+                    local waterCan = player.Backpack:FindFirstChild("Super Watering Can") or player.Character:FindFirstChild("Super Watering Can")
+                    
+                    if not waterCan then
+                        countdown = countdown - 1
+                        if countdown <= 0 then
+                            started = false
+                            pcall(function() 
+                                game:GetService("TeleportService"):Teleport(game.PlaceId, player) 
+                            end)
+                            break
+                        end
+                    else
+                        countdown = 5
+                    end
+                    task.wait(1)
+                end
+            end)
+        end
+
+        if toggles["Auto Sprinkler"].getState() then
+            task.spawn(function()
+                while started and toggles["Auto Sprinkler"].getState() do
+                    teleportToCFrame(SprinklerInput.Text)
+                    task.wait(2)
+                    placeSprinkler(SprinklerInput.Text)
+                    task.wait(122)
+                end
+            end)
+        end
+
+        if toggles["Auto Water"].getState() then
+            task.spawn(function()
+                while started and toggles["Auto Water"].getState() do
+                    useSuperWateringCan()
+                    task.wait(5)
+                end
+            end)
+        end
+
+    else
+        StartBtn.Text = "Start"
+        StartBtn.TextColor3 = Color3.fromRGB(179, 136, 255)
+        StartBtn.BackgroundColor3 = Color3.fromRGB(24, 20, 34)
+        startBtnStroke.Color = Color3.fromRGB(179, 136, 255)
+    end
+end
+
+StartBtn.MouseButton1Click:Connect(executeStartLogic)
+
+if toggles["Auto Start"].getState() then
+    task.spawn(executeStartLogic)
+end
+
+PosBtn.MouseButton1Click:Connect(function()
+    loadstring(game:HttpGet("https://pastefy.app/seBtaujs/raw"))()
+end)
+
+SaveBtn.MouseButton1Click:Connect(function()
+    local dataToSave = {
+        ["Teleport Position"] = TeleportInput.Text,
+        ["Sprinkler Position"] = SprinklerInput.Text,
+        Toggles = {}
+    }
+    
+    for name, tbl in pairs(toggles) do
+        dataToSave.Toggles[name] = tbl.getState()
+    end
+    
+    local success, encoded = pcall(function()
+        return HttpService:JSONEncode(dataToSave)
+    end)
+    
+    if success then
+        pcall(writefile, SettingsFile, encoded)
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- PASTEFY AUTO-EXECUTE
+local ScriptURL = "https://raw.githubusercontent.com/CodedSai/loopwmu/refs/heads/main/loop1"
+
+if queue_on_teleport then
+    pcall(function()
+        queue_on_teleport("loadstring(game:HttpGet('" .. ScriptURL .. "'))()")
+    end)
+end
+
+return {
+    ScreenGui = ScreenGui,
+    Card = Card,
+    TeleportInput = TeleportInput,
+    SprinklerInput = SprinklerInput,
+    Toggles = toggles,
+    StartButton = StartBtn,
+}
