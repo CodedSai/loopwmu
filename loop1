@@ -627,7 +627,7 @@ if toggles["Auto Start"].getState() then
 end
 
 PosBtn.MouseButton1Click:Connect(function()
-    loadstring(game:HttpGet("https://pastefy.app/seBtaujs/raw"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/CodedSai/loopwmu/refs/heads/main/loop2"))()
 end)
 
 SaveBtn.MouseButton1Click:Connect(function()
